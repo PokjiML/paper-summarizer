@@ -39,7 +39,7 @@ def fetch_new_papers(last_checked, max_results=20):
             new_papers.append({
                 "title": result.title,
                 "authors": [author.name for author in result.authors],
-                "abstract": result.summary,
+                "abstract": result.summary.replace('\n', ' '),
                 "url": result.pdf_url,
                 "published": result.published
             })

@@ -21,7 +21,7 @@ def fetch_recent_ai_papers(max_results=5):
         papers.append({
             "title": result.title,
             "authors": [author.name for author in result.authors],
-            "abstract": result.summary,
+            "abstract": result.summary.replace('\n', ' '),
             "url": result.pdf_url,
             "published": result.published
         })
