@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vanilla + Prompt vs LoRA — Comparison Report</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f4f6f9; color: #1a1a2e; padding: 20px; }
+  .container { max-width: 1400px; margin: 0 auto; }
+  h1 { text-align: center; margin-bottom: 8px; font-size: 1.8rem; color: #16213e; }
+  .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 0.9rem; }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 30px; }
+  .metric-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center; }
+  .metric-card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 4px; }
+  .metric-card .values { display: flex; justify-content: center; align-items: baseline; gap: 10px; }
+  .metric-card .vanilla { font-size: 1.4rem; font-weight: 700; color: #e67e22; }
+  .metric-card .lora    { font-size: 1.4rem; font-weight: 700; color: #2ecc71; }
+  .metric-card .delta   { font-size: 0.85rem; font-weight: 600; padding: 2px 8px; border-radius: 12px; }
+  .delta-pos { background: #d4edda; color: #155724; }
+  .delta-neg { background: #f8d7da; color: #721c24; }
+
+  .sample-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .sample-card h3 { font-size: 1rem; color: #16213e; margin-bottom: 12px; border-bottom: 2px solid #eef0f5; padding-bottom: 8px; }
+  .field { margin-bottom: 12px; }
+  .field-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .field-content { background: #f8f9fb; border-radius: 6px; padding: 10px 14px; font-size: 0.88rem; line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
+  .field-content.abstract { max-height: 120px; overflow-y: auto; font-size: 0.82rem; color: #555; }
+  .field-content.ref { border-left: 3px solid #3498db; }
+  .field-content.prompt { border-left: 3px solid #e67e22; }
+  .field-content.lora { border-left: 3px solid #2ecc71; }
+
+  .diff-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; line-height: 1.55; margin-top: 6px; border-radius: 6px; overflow: hidden; }
+  .diff-table td { padding: 4px 10px; vertical-align: top; }
+  .diff-table .diff-num { width: 30px; text-align: right; color: #999; font-size: 0.75rem; user-select: none; }
+  .diff-table .diff-sign { width: 20px; text-align: center; font-weight: bold; }
+  .diff-row-equal  { background: #f9fafb; }
+  .diff-row-delete { background: #ffeef0; }
+  .diff-row-insert { background: #e6ffed; }
+  .diff-row-delete .diff-sign { color: #cb2431; }
+  .diff-row-insert .diff-sign { color: #22863a; }
+  .diff-row-delete td.diff-text { color: #cb2431; }
+  .diff-row-insert td.diff-text { color: #22863a; }
+
+  .footer { text-align: center; color: #aaa; font-size: 0.75rem; margin-top: 30px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🔬 Vanilla Qwen + Well-Crafted Prompt vs LoRA Fine-Tuned</h1>
+  <p class="subtitle">Generated on 2026-06-08 13:01:35 &nbsp;|&nbsp; 5 test samples &nbsp;|&nbsp; max_new_tokens=150</p>
+  <p class="subtitle" style="font-size:0.8rem;color:#999;">
+    🟠 Vanilla prompt: <em>"Summarize in one concise paragraph, no markdown, plain text only"</em><br>
+    🟢 LoRA prompt: <em>Simple "Summarize this abstract"</em> (matches training distribution)
+  </p>
+
+  <div class="metrics-grid">
+    <div class="metric-card">
+          <div class="label">ROUGE-1</div>
+          <div class="values">
+            <span class="vanilla">0.3564</span>
+            <span style="color:#ccc;">→</span>
+            <span class="lora">0.3636</span>
+            <span class="delta delta-pos">+0.0072</span>
+          </div>
+        </div>
+<div class="metric-card">
+          <div class="label">ROUGE-2</div>
+          <div class="values">
+            <span class="vanilla">0.1214</span>
+            <span style="color:#ccc;">→</span>
+            <span class="lora">0.1004</span>
+            <span class="delta delta-neg">-0.0211</span>
+          </div>
+        </div>
+<div class="metric-card">
+          <div class="label">ROUGE-L</div>
+          <div class="values">
+            <span class="vanilla">0.1952</span>
+            <span style="color:#ccc;">→</span>
+            <span class="lora">0.1974</span>
+            <span class="delta delta-pos">+0.0023</span>
+          </div>
+        </div>
+<div class="metric-card">
+          <div class="label">BERTScore F1</div>
+          <div class="values">
+            <span class="vanilla">0.8330</span>
+            <span style="color:#ccc;">→</span>
+            <span class="lora">0.8291</span>
+            <span class="delta delta-neg">-0.0039</span>
+          </div>
+        </div>
+  </div>
+
+  <div class="sample-card">
+      <h3>📄 Sample #1</h3>
+
+      <div class="field">
+        <div class="field-label">📝 Abstract</div>
+        <div class="field-content abstract">Incremental class learning involves sequentially learning classes in bursts of examples from the same class. This violates the assumptions that underlie  methods for training standard deep neural networks, and will cause them to suffer from catastrophic forgetting. Arguably, the best method for incremental class learning is iCaRL, but it requires storing  training examples for each class, making it challenging to scale. Here, we propose FearNet for incremental class learning. FearNet is a generative model that does not store previous examples, making it memory efficient. FearNet uses a brain-i...</div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">🎯 Reference Summary</div>
+        <div class="field-content ref">FearNet is a memory efficient neural-network, inspired by memory formation in the mammalian brain, that is capable of incremental class learning without catastrophic forgetting. This paper presents a novel solution to an incremental classification problem based on a dual memory system. </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field">
+          <div class="field-label">🟠 Vanilla Qwen + Well-Crafted Prompt</div>
+          <div class="field-content prompt">FearNet is a memory-efficient generative model for incremental class learning that avoids catastrophic forgetting by utilizing a brain-inspired dual-memory system, where recent memories are consolidated from a hippocampal-like network to a long-term storage network inspired by the medial prefrontal cortex, and it employs an amygdala-inspired module to select the appropriate memory system for recall, achieving state-of-the-art performance on image and audio classification benchmarks.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">🟢 Qwen + LoRA (simple prompt)</div>
+          <div class="field-content lora">FearNet is a memory-efficient AI model that learns new classes without storing all past examples, using a brain-inspired dual-memory system to handle incremental learning.</div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:4px;">
+        <div class="field-label">🔍 Word-Level Diff (Prompt vs LoRA)</div>
+        <table class="diff-table">
+      <colgroup><col style="width:40px"><col><col style="width:40px"><col></colgroup>
+      <thead><tr style="background:#eef0f5;font-weight:600;font-size:0.75rem;">
+        <th></th><th style="text-align:left;padding:4px 10px;">🟠 Vanilla+Prompt</th>
+        <th></th><th style="text-align:left;padding:4px 10px;">🟢 LoRA</th>
+      </tr></thead>
+      <tbody><tr class="diff-row-equal">
+              <td class="diff-num">0</td><td class="diff-text">FearNet is a memory-efficient</td>
+              <td class="diff-num">0</td><td class="diff-text">FearNet is a memory-efficient</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">4</td><td class="diff-text"><span class="diff-sign">−</span> generative</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">4</td><td class="diff-text"><span class="diff-sign">+</span> AI</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">5</td><td class="diff-text">model</td>
+              <td class="diff-num">5</td><td class="diff-text">model</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">6</td><td class="diff-text"><span class="diff-sign">−</span> for incremental class learning</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">10</td><td class="diff-text">that</td>
+              <td class="diff-num">6</td><td class="diff-text">that</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">11</td><td class="diff-text"><span class="diff-sign">−</span> avoids catastrophic forgetting by utilizing</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">7</td><td class="diff-text"><span class="diff-sign">+</span> learns new classes without storing all past examples, using</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">16</td><td class="diff-text">a brain-inspired dual-memory</td>
+              <td class="diff-num">16</td><td class="diff-text">a brain-inspired dual-memory</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">19</td><td class="diff-text"><span class="diff-sign">−</span> system, where recent memories are consolidated from a hippocampal-like network</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">19</td><td class="diff-text"><span class="diff-sign">+</span> system</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">29</td><td class="diff-text">to</td>
+              <td class="diff-num">20</td><td class="diff-text">to</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">30</td><td class="diff-text"><span class="diff-sign">−</span> a long-term storage network inspired by the medial prefrontal cortex, and it employs an amygdala-inspired module to select the appropriate memory system for recall, achieving state-of-the-art performance on image and audio classification benchmarks.</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">21</td><td class="diff-text"><span class="diff-sign">+</span> handle incremental learning.</td>
+            </tr></tbody>
+    </table>
+      </div>
+    </div>
+<div class="sample-card">
+      <h3>📄 Sample #2</h3>
+
+      <div class="field">
+        <div class="field-label">📝 Abstract</div>
+        <div class="field-content abstract">Multi-view learning can provide self-supervision when different views are available of the same data. Distributional hypothesis provides another form of useful self-supervision from adjacent sentences which are plentiful in large unlabelled corpora. Motivated by the asymmetry in the two hemispheres of the human brain as well as the observation that different learning architectures tend to emphasise different aspects of sentence meaning, we present two multi-view frameworks for learning sentence representations in an unsupervised fashion. One framework uses a generative objective and the other ...</div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">🎯 Reference Summary</div>
+        <div class="field-content ref">Multi-view learning improves unsupervised sentence representation learning Approach uses different, complementary encoders of the input sentence and consensus maximization. The paper presents a multi-view framework for improving sentence representation in NLP tasks using generative and discriminative objective architectures. This paper shows that multi-view frameworks are more effective than using individual encoders for learning sentence representations.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field">
+          <div class="field-label">🟠 Vanilla Qwen + Well-Crafted Prompt</div>
+          <div class="field-content prompt">This paper introduces two unsupervised multi-view frameworks for learning sentence representations that leverage the asymmetry between the two hemispheres of the human brain and the abundance of adjacent sentences in large unlabelled corpora, utilizing an ensemble of a recurrent neural network and a simple linear model to encode the input. The study demonstrates that these dual-view approaches outperform single-view counterparts in terms of representation quality and provide superior performance on standard downstream tasks, proving that combining different learning architectures yields significant representational improvements and robust transferability.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">🟢 Qwen + LoRA (simple prompt)</div>
+          <div class="field-content lora">This paper proposes two unsupervised multi-view frameworks for learning sentence representations. It uses a generative and a discriminative approach, combining the best of both to create an ensemble of two views. One view uses an RNN, and the other uses a simple linear model. The results show that this multi-view approach outperforms single-view models and improves transfer to downstream tasks.</div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:4px;">
+        <div class="field-label">🔍 Word-Level Diff (Prompt vs LoRA)</div>
+        <table class="diff-table">
+      <colgroup><col style="width:40px"><col><col style="width:40px"><col></colgroup>
+      <thead><tr style="background:#eef0f5;font-weight:600;font-size:0.75rem;">
+        <th></th><th style="text-align:left;padding:4px 10px;">🟠 Vanilla+Prompt</th>
+        <th></th><th style="text-align:left;padding:4px 10px;">🟢 LoRA</th>
+      </tr></thead>
+      <tbody><tr class="diff-row-equal">
+              <td class="diff-num">0</td><td class="diff-text">This paper</td>
+              <td class="diff-num">0</td><td class="diff-text">This paper</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">2</td><td class="diff-text"><span class="diff-sign">−</span> introduces</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">2</td><td class="diff-text"><span class="diff-sign">+</span> proposes</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">3</td><td class="diff-text">two unsupervised multi-view frameworks for learning sentence</td>
+              <td class="diff-num">3</td><td class="diff-text">two unsupervised multi-view frameworks for learning sentence</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">10</td><td class="diff-text"><span class="diff-sign">−</span> representations that leverage</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">10</td><td class="diff-text"><span class="diff-sign">+</span> representations. It uses a generative and a discriminative approach, combining</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">13</td><td class="diff-text">the</td>
+              <td class="diff-num">20</td><td class="diff-text">the</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">14</td><td class="diff-text"><span class="diff-sign">−</span> asymmetry between the two hemispheres</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">21</td><td class="diff-text"><span class="diff-sign">+</span> best</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">19</td><td class="diff-text">of</td>
+              <td class="diff-num">22</td><td class="diff-text">of</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">20</td><td class="diff-text"><span class="diff-sign">−</span> the human brain and the abundance of adjacent sentences in large unlabelled corpora, utilizing</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">23</td><td class="diff-text"><span class="diff-sign">+</span> both to create</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">34</td><td class="diff-text">an ensemble of</td>
+              <td class="diff-num">26</td><td class="diff-text">an ensemble of</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">37</td><td class="diff-text"><span class="diff-sign">−</span> a recurrent neural network</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">29</td><td class="diff-text"><span class="diff-sign">+</span> two views. One view uses an RNN,</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">41</td><td class="diff-text">and</td>
+              <td class="diff-num">36</td><td class="diff-text">and</td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">37</td><td class="diff-text"><span class="diff-sign">+</span> the other uses</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">42</td><td class="diff-text">a simple linear</td>
+              <td class="diff-num">40</td><td class="diff-text">a simple linear</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">45</td><td class="diff-text"><span class="diff-sign">−</span> model</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">43</td><td class="diff-text"><span class="diff-sign">+</span> model. The results show that this multi-view approach outperforms single-view models and improves transfer</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">46</td><td class="diff-text">to</td>
+              <td class="diff-num">57</td><td class="diff-text">to</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">47</td><td class="diff-text"><span class="diff-sign">−</span> encode the input. The study demonstrates that these dual-view approaches outperform single-view counterparts in terms of representation quality and provide superior performance on standard</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">71</td><td class="diff-text">downstream</td>
+              <td class="diff-num">58</td><td class="diff-text">downstream</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">72</td><td class="diff-text"><span class="diff-sign">−</span> tasks, proving that combining different learning architectures yields significant representational improvements and robust transferability.</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">59</td><td class="diff-text"><span class="diff-sign">+</span> tasks.</td>
+            </tr></tbody>
+    </table>
+      </div>
+    </div>
+<div class="sample-card">
+      <h3>📄 Sample #3</h3>
+
+      <div class="field">
+        <div class="field-label">📝 Abstract</div>
+        <div class="field-content abstract">We show how discrete objects can be learnt in an unsupervised fashion from pixels, and how to perform reinforcement learning using this object representation.
+
+ More precisely, we construct a differentiable mapping from an image to a discrete tabular list of objects, where each object consists of a differentiable position, feature vector, and scalar presence value that allows the representation to be learnt using an attention mechanism.
+
+ Applying this mapping to Atari games, together with an interaction net-style architecture for calculating quantities from objects, we construct agents that c...</div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">🎯 Reference Summary</div>
+        <div class="field-content ref">We show how discrete objects can be learnt in an unsupervised fashion from pixels, and how to perform reinforcement learning using this object representation. A method for learning object representations from pixels for doing reinforcement learning.  The paper proposes a neural architecture to map video streams to a discrete collection of objects, without human annotations, using an unsupervised pixel reconstruction loss. </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field">
+          <div class="field-label">🟠 Vanilla Qwen + Well-Crafted Prompt</div>
+          <div class="field-content prompt">The paper presents a method for learning discrete objects from pixel data in an unsupervised manner by constructing a differentiable mapping that transforms images into tabular lists of objects, each comprising a differentiable position, feature vector, and scalar presence value, which enables the use of attention mechanisms. By applying this object representation to Atari games alongside an interaction net-style architecture, the authors developed agents capable of playing Atari games using these learned objects, during which natural objects such as the ball and paddles in Pong and the submarine and fish in Seaquest emerge. This approach yields the first reinforcement learning agent for Atari with an interpretable object representation and paves the way for future agents that can conduct object-based exploration and generalization.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">🟢 Qwen + LoRA (simple prompt)</div>
+          <div class="field-content lora">**Title:** Learning Discrete Objects from Pixels for Atari Games
+
+**Summary:**
+This paper presents a method to learn discrete objects from raw pixel data without supervision. The authors create a differentiable mapping from images to a tabular list of objects, where each object has a position, features, and a presence value. This representation is used with an attention mechanism to learn the objects. The authors then use this object representation to train reinforcement learning agents for Atari games. The agents can learn to play Atari games using objects that emerge naturally during training.</div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:4px;">
+        <div class="field-label">🔍 Word-Level Diff (Prompt vs LoRA)</div>
+        <table class="diff-table">
+      <colgroup><col style="width:40px"><col><col style="width:40px"><col></colgroup>
+      <thead><tr style="background:#eef0f5;font-weight:600;font-size:0.75rem;">
+        <th></th><th style="text-align:left;padding:4px 10px;">🟠 Vanilla+Prompt</th>
+        <th></th><th style="text-align:left;padding:4px 10px;">🟢 LoRA</th>
+      </tr></thead>
+      <tbody><tr class="diff-row-delete">
+              <td class="diff-num">0</td><td class="diff-text"><span class="diff-sign">−</span> The</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">0</td><td class="diff-text"><span class="diff-sign">+</span> **Title:** Learning Discrete Objects from Pixels for Atari Games **Summary:** This</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">1</td><td class="diff-text">paper presents a method</td>
+              <td class="diff-num">11</td><td class="diff-text">paper presents a method</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">5</td><td class="diff-text"><span class="diff-sign">−</span> for learning</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">15</td><td class="diff-text"><span class="diff-sign">+</span> to learn</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">7</td><td class="diff-text">discrete objects from</td>
+              <td class="diff-num">17</td><td class="diff-text">discrete objects from</td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">20</td><td class="diff-text"><span class="diff-sign">+</span> raw</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">10</td><td class="diff-text">pixel data</td>
+              <td class="diff-num">21</td><td class="diff-text">pixel data</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">12</td><td class="diff-text"><span class="diff-sign">−</span> in an unsupervised manner by constructing</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">23</td><td class="diff-text"><span class="diff-sign">+</span> without supervision. The authors create</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">18</td><td class="diff-text">a differentiable mapping</td>
+              <td class="diff-num">28</td><td class="diff-text">a differentiable mapping</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">21</td><td class="diff-text"><span class="diff-sign">−</span> that transforms</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">31</td><td class="diff-text"><span class="diff-sign">+</span> from</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">23</td><td class="diff-text">images</td>
+              <td class="diff-num">32</td><td class="diff-text">images</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">24</td><td class="diff-text"><span class="diff-sign">−</span> into</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">33</td><td class="diff-text"><span class="diff-sign">+</span> to a</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">25</td><td class="diff-text">tabular</td>
+              <td class="diff-num">35</td><td class="diff-text">tabular</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">26</td><td class="diff-text"><span class="diff-sign">−</span> lists</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">36</td><td class="diff-text"><span class="diff-sign">+</span> list</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">27</td><td class="diff-text">of objects,</td>
+              <td class="diff-num">37</td><td class="diff-text">of objects,</td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">39</td><td class="diff-text"><span class="diff-sign">+</span> where</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">29</td><td class="diff-text">each</td>
+              <td class="diff-num">40</td><td class="diff-text">each</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">30</td><td class="diff-text"><span class="diff-sign">−</span> comprising</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">41</td><td class="diff-text"><span class="diff-sign">+</span> object has</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">31</td><td class="diff-text">a</td>
+              <td class="diff-num">43</td><td class="diff-text">a</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">32</td><td class="diff-text"><span class="diff-sign">−</span> differentiable</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">33</td><td class="diff-text">position,</td>
+              <td class="diff-num">44</td><td class="diff-text">position,</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">34</td><td class="diff-text"><span class="diff-sign">−</span> feature vector,</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">45</td><td class="diff-text"><span class="diff-sign">+</span> features,</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">36</td><td class="diff-text">and</td>
+              <td class="diff-num">46</td><td class="diff-text">and</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">37</td><td class="diff-text"><span class="diff-sign">−</span> scalar</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">47</td><td class="diff-text"><span class="diff-sign">+</span> a</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">38</td><td class="diff-text">presence</td>
+              <td class="diff-num">48</td><td class="diff-text">presence</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">39</td><td class="diff-text"><span class="diff-sign">−</span> value, which enables</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">49</td><td class="diff-text"><span class="diff-sign">+</span> value. This representation is used with an attention mechanism to learn</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">42</td><td class="diff-text">the</td>
+              <td class="diff-num">60</td><td class="diff-text">the</td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">61</td><td class="diff-text"><span class="diff-sign">+</span> objects. The authors then</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">43</td><td class="diff-text">use</td>
+              <td class="diff-num">65</td><td class="diff-text">use</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">44</td><td class="diff-text"><span class="diff-sign">−</span> of attention mechanisms. By applying</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">49</td><td class="diff-text">this object representation to</td>
+              <td class="diff-num">66</td><td class="diff-text">this object representation to</td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">70</td><td class="diff-text"><span class="diff-sign">+</span> train reinforcement learning agents for</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">53</td><td class="diff-text">Atari</td>
+              <td class="diff-num">75</td><td class="diff-text">Atari</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">54</td><td class="diff-text"><span class="diff-sign">−</span> games alongside an interaction net-style architecture, the authors developed</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">76</td><td class="diff-text"><span class="diff-sign">+</span> games. The</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">63</td><td class="diff-text">agents</td>
+              <td class="diff-num">78</td><td class="diff-text">agents</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">64</td><td class="diff-text"><span class="diff-sign">−</span> capable of playing</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">79</td><td class="diff-text"><span class="diff-sign">+</span> can learn to play</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">67</td><td class="diff-text">Atari games using</td>
+              <td class="diff-num">83</td><td class="diff-text">Atari games using</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">70</td><td class="diff-text"><span class="diff-sign">−</span> these learned objects,</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">86</td><td class="diff-text"><span class="diff-sign">+</span> objects that emerge naturally</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">73</td><td class="diff-text">during</td>
+              <td class="diff-num">90</td><td class="diff-text">during</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">74</td><td class="diff-text"><span class="diff-sign">−</span> which natural objects such as the ball and paddles in Pong and the submarine and fish in Seaquest emerge. This approach yields the first reinforcement learning agent for Atari with an interpretable object representation and paves the way for future agents that can conduct object-based exploration and generalization.</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">91</td><td class="diff-text"><span class="diff-sign">+</span> training.</td>
+            </tr></tbody>
+    </table>
+      </div>
+    </div>
+<div class="sample-card">
+      <h3>📄 Sample #4</h3>
+
+      <div class="field">
+        <div class="field-label">📝 Abstract</div>
+        <div class="field-content abstract">Most recent gains in visual recognition have originated from the inclusion of attention mechanisms in deep convolutional networks (DCNs). Because these networks are optimized for object recognition, they learn where to attend using only a weak form of supervision derived from image class labels. Here, we demonstrate the benefit of using stronger supervisory signals by teaching DCNs to attend to image regions that humans deem important for object recognition. We first describe a large-scale online experiment (ClickMe) used to supplement ImageNet with nearly half a million human-derived &quot;top-dow...</div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">🎯 Reference Summary</div>
+        <div class="field-content ref">A large-scale dataset for training attention models for object recognition leads to more accurate, interpretable, and human-like object recognition. Argues recent gains in visual recognition stem from using visual attention mechanisms in deep convolutional networks, which learn where to focus through a weak form of supervision based on image class labels. Presents a new take on attention in which a large attention dataset is collected and used to train a NN in a supervised manner to exploit self-reported human attention. This paper proposes a new approach to use more informative signals, specifically, regions humans deem important on images, to improve deep convolutional neural networks.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field">
+          <div class="field-label">🟠 Vanilla Qwen + Well-Crafted Prompt</div>
+          <div class="field-content prompt">This paper demonstrates that deep convolutional networks trained with strong top-down attention supervision, derived from human-derived maps, outperform those relying solely on weak bottom-up image class labels, as confirmed by a large-scale online experiment on ImageNet and validated through human psychophysics showing superior diagnostic accuracy for rapid categorization.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">🟢 Qwen + LoRA (simple prompt)</div>
+          <div class="field-content lora">Adding human-derived attention maps to deep networks significantly improves their accuracy and interpretability.</div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:4px;">
+        <div class="field-label">🔍 Word-Level Diff (Prompt vs LoRA)</div>
+        <table class="diff-table">
+      <colgroup><col style="width:40px"><col><col style="width:40px"><col></colgroup>
+      <thead><tr style="background:#eef0f5;font-weight:600;font-size:0.75rem;">
+        <th></th><th style="text-align:left;padding:4px 10px;">🟠 Vanilla+Prompt</th>
+        <th></th><th style="text-align:left;padding:4px 10px;">🟢 LoRA</th>
+      </tr></thead>
+      <tbody><tr class="diff-row-delete">
+              <td class="diff-num">0</td><td class="diff-text"><span class="diff-sign">−</span> This paper demonstrates that</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">0</td><td class="diff-text"><span class="diff-sign">+</span> Adding human-derived attention maps to</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">4</td><td class="diff-text">deep</td>
+              <td class="diff-num">5</td><td class="diff-text">deep</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">5</td><td class="diff-text"><span class="diff-sign">−</span> convolutional</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">6</td><td class="diff-text">networks</td>
+              <td class="diff-num">6</td><td class="diff-text">networks</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">7</td><td class="diff-text"><span class="diff-sign">−</span> trained with strong top-down attention supervision, derived from human-derived maps, outperform those relying solely on weak bottom-up image class labels, as confirmed by a large-scale online experiment on ImageNet</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">7</td><td class="diff-text"><span class="diff-sign">+</span> significantly improves their accuracy</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">36</td><td class="diff-text">and</td>
+              <td class="diff-num">11</td><td class="diff-text">and</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">37</td><td class="diff-text"><span class="diff-sign">−</span> validated through human psychophysics showing superior diagnostic accuracy for rapid categorization.</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">12</td><td class="diff-text"><span class="diff-sign">+</span> interpretability.</td>
+            </tr></tbody>
+    </table>
+      </div>
+    </div>
+<div class="sample-card">
+      <h3>📄 Sample #5</h3>
+
+      <div class="field">
+        <div class="field-label">📝 Abstract</div>
+        <div class="field-content abstract">In recent years, deep neural networks have demonstrated outstanding performancein many machine learning tasks. However, researchers have discovered that thesestate-of-the-art models are vulnerable to adversarial examples:  legitimate examples added by small perturbations which are unnoticeable to human eyes. Adversarial training, which augments the training data with adversarial examples duringthe training process,  is a well known defense to improve the robustness of themodel against adversarial attacks.   However, this robustness is only effective tothe same attack method used for adversaria...</div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">🎯 Reference Summary</div>
+        <div class="field-content ref">We proposed a time-efficient defense method against one-step and iterative adversarial attacks. Propose a novel, computationaly efficient method named e2SAD which generates sets of two training adversarial samples for each clean training sample. The paper introduces a two-step adversarial defense method, to generate two adversarial examples per clean sample and include them in the actual training loop to achieve robustness and claiming it can outperform more expensive iterative methods. The paper presents a 2-step approach to generate strong adversarial examples at a far lesser cost as compared to recent iterative multi-step adversarial attacks.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="field">
+          <div class="field-label">🟠 Vanilla Qwen + Well-Crafted Prompt</div>
+          <div class="field-content prompt">This paper addresses the limitation of adversarial training, which only defends against specific attack methods, by proposing a two-step defense approach that generates strong adversarial examples at a computational cost similar to two runs of the fast gradient sign method (FGSM), thereby achieving robustness comparable to multi-step attacks while maintaining efficiency against diverse first-order adversaries.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">🟢 Qwen + LoRA (simple prompt)</div>
+          <div class="field-content lora">Deep neural networks are vulnerable to adversarial attacks, where tiny, invisible changes to input data can fool the model. While adversarial training (adding adversarial examples during training) is a common defense, it only works well against the specific attack method used to create those examples.
+
+This paper proposes a new, simpler defense strategy. Instead of using complex multi-step attacks, it generates adversarial examples using a fast, two-step method. The results show that this approach is just as effective as adversarial training, but it is much faster to compute.</div>
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:4px;">
+        <div class="field-label">🔍 Word-Level Diff (Prompt vs LoRA)</div>
+        <table class="diff-table">
+      <colgroup><col style="width:40px"><col><col style="width:40px"><col></colgroup>
+      <thead><tr style="background:#eef0f5;font-weight:600;font-size:0.75rem;">
+        <th></th><th style="text-align:left;padding:4px 10px;">🟠 Vanilla+Prompt</th>
+        <th></th><th style="text-align:left;padding:4px 10px;">🟢 LoRA</th>
+      </tr></thead>
+      <tbody><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">0</td><td class="diff-text"><span class="diff-sign">+</span> Deep neural networks are vulnerable to adversarial attacks, where tiny, invisible changes to input data can fool the model. While adversarial training (adding adversarial examples during training) is a common defense, it only works well against the specific attack method used to create those examples.</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">0</td><td class="diff-text">This paper</td>
+              <td class="diff-num">45</td><td class="diff-text">This paper</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">2</td><td class="diff-text"><span class="diff-sign">−</span> addresses the limitation</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">47</td><td class="diff-text"><span class="diff-sign">+</span> proposes a new, simpler defense strategy. Instead</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">5</td><td class="diff-text">of</td>
+              <td class="diff-num">54</td><td class="diff-text">of</td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">55</td><td class="diff-text"><span class="diff-sign">+</span> using complex multi-step attacks, it generates adversarial examples using a fast, two-step method. The results show that this approach is just as effective as</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">6</td><td class="diff-text">adversarial training,</td>
+              <td class="diff-num">79</td><td class="diff-text">adversarial training,</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">8</td><td class="diff-text"><span class="diff-sign">−</span> which only defends against specific attack methods, by proposing a two-step defense approach that generates strong adversarial examples at a computational cost similar</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">81</td><td class="diff-text"><span class="diff-sign">+</span> but it is much faster</td>
+            </tr><tr class="diff-row-equal">
+              <td class="diff-num">31</td><td class="diff-text">to</td>
+              <td class="diff-num">86</td><td class="diff-text">to</td>
+            </tr><tr class="diff-row-delete">
+              <td class="diff-num">32</td><td class="diff-text"><span class="diff-sign">−</span> two runs of the fast gradient sign method (FGSM), thereby achieving robustness comparable to multi-step attacks while maintaining efficiency against diverse first-order adversaries.</td>
+              <td class="diff-num"></td><td class="diff-text"></td>
+            </tr><tr class="diff-row-insert">
+              <td class="diff-num"></td><td class="diff-text"></td>
+              <td class="diff-num">87</td><td class="diff-text"><span class="diff-sign">+</span> compute.</td>
+            </tr></tbody>
+    </table>
+      </div>
+    </div>
+
+  <div class="footer">Paper Summarizer — Prompt Engineering vs Fine-Tuning Comparison</div>
+</div>
+</body>
+</html>

@@ -77,7 +77,26 @@ class QwenSummarizer:
         return model
 
     def judge_paper(self, title, abstract):
-        prompt = f"Given the following AI research paper title and abstract, judge if it is highly novel, impactful, and worth reading. Reply with exactly 'YES' if it is worth reading, and 'NO' if it is not.\n\nTitle: {title}\nAbstract: {abstract}\n\nDecision (YES/NO):"
+        prompt = f"""Judge if this AI paper is genuinely worth reading. Be very strict.
+
+Reject (NO) if the paper:
+- Is an incremental improvement over existing work
+- Only achieves SOTA by minor tweaks (architecture, hyperparams, more data)
+- Proposes a method that only works on narrow benchmarks
+- Lacks surprising or counter-intuitive findings
+- Is a survey, benchmark, or dataset paper without novel insights
+
+Accept (YES) only if the paper:
+- Introduces a fundamentally new idea or paradigm
+- Solves a long-standing open problem
+- Has findings that would surprise experts in the field
+
+Default to NO. Less than 10% of papers should pass.
+
+Title: {title}
+Abstract: {abstract}
+
+Decision (YES/NO):"""
         
         messages = [{"role": "user", "content": prompt}]
         text = self.tokenizer.apply_chat_template(
@@ -102,8 +121,11 @@ class QwenSummarizer:
         decision = self.tokenizer.decode(summary_tokens, skip_special_tokens=True).strip().upper()
         return "YES" in decision
 
-    def summarize(self, abstract, max_new_tokens=150):
-        prompt = f"Summarize the following AI research paper abstract in a concise and easily understandable way:\n\nAbstract: {abstract}\n\nSummary:"
+    def summarize(self, abstract, max_new_tokens=150, custom_prompt=None):
+        if custom_prompt:
+            prompt = custom_prompt.format(abstract=abstract)
+        else:
+            prompt = f"Summarize the following AI research paper abstract in a concise and easily understandable way:\n\nAbstract: {abstract}\n\nSummary:"
         
         messages = [{"role": "user", "content": prompt}]
         text = self.tokenizer.apply_chat_template(

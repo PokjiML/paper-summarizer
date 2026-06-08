@@ -21,7 +21,7 @@ def save_last_checked_date(date: datetime):
     with open(STATE_FILE, "w") as f:
         json.dump({"last_checked": date.isoformat()}, f)
 
-def fetch_new_papers(last_checked, max_results=20):
+def fetch_new_papers(last_checked, max_results=100):
     client = arxiv.Client()
     search = arxiv.Search(
         query="cat:cs.AI OR cat:cs.CL OR cat:cs.CV OR cat:cs.LG",
